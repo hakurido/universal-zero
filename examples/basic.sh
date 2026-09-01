@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Set UZ_BASE_URL to any compatible endpoint, including the URL printed by `hermes proxy`.
 : "${UZ_BASE_URL:=http://localhost:1234/v1}"
 : "${UZ_API_KEY:=local}"
 export UZ_BASE_URL UZ_API_KEY

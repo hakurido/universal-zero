@@ -26,3 +26,4 @@ jobs:
       - run: uv run --with coverage coverage run -m unittest
       - run: uv run --with coverage coverage report
       - run: uv build
+      - run: uv run universal-zero --version

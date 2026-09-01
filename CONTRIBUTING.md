@@ -3,7 +3,7 @@
 ## Development setup
 
 ```bash
-git clone https://github.com/AnimeNoChikara/universal-zero.git
+git clone https://github.com/hakurido/universal-zero.git
 cd universal-zero
 uv sync --dev
 ```
