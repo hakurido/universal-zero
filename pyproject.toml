@@ -1,0 +1,54 @@
+[build-system]
+requires = ["hatchling>=1.27"]
+build-backend = "hatchling.build"
+
+[project]
+name = "universal-zero"
+version = "1.1.0"
+description = "Adaptive resilience and scope-retention evaluator for OpenAI-compatible language models"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+authors = [{ name = "AnimeNoChikara" }]
+keywords = ["llm", "evaluation", "openai-compatible", "model-routing", "reliability"]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Environment :: Console",
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+]
+dependencies = ["httpx>=0.27,<1"]
+
+[project.urls]
+Homepage = "https://github.com/AnimeNoChikara/universal-zero"
+Issues = "https://github.com/AnimeNoChikara/universal-zero/issues"
+
+[project.scripts]
+universal-zero = "universal_zero:main"
+
+[tool.hatch.build.targets.wheel]
+include = ["universal_zero.py"]
+
+[tool.ruff]
+line-length = 110
+target-version = "py311"
+extend-exclude = ["results", "dist", ".venv"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "SIM", "RUF"]
+ignore = ["E501", "RUF001"]
+
+[tool.mypy]
+python_version = "3.11"
+warn_unused_configs = true
+check_untyped_defs = true
+
+[tool.coverage.run]
+source = ["universal_zero"]
+
+[tool.coverage.report]
+show_missing = true
+fail_under = 70

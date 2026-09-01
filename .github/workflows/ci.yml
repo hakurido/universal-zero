@@ -1,0 +1,28 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.11", "3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - run: uv sync
+      - run: uv run python -m unittest -v
+      - run: uvx ruff check .
+      - run: uvx ruff format --check .
+      - run: uv run --with mypy mypy universal_zero.py
+      - run: uv run --with coverage coverage run -m unittest
+      - run: uv run --with coverage coverage report
+      - run: uv build
