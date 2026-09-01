@@ -19,7 +19,7 @@ from typing import Any
 import httpx
 
 DEFAULT_BASE_URL = "http://localhost:20128/v1"
-__version__ = "1.1.0"
+__version__ = "1.1.1"
 EXCLUDED_FAMILIES = ("gpt", "openai", "claude", "anthropic")
 
 REFUSALS = tuple(
