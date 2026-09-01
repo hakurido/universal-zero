@@ -448,7 +448,11 @@ class UniversalZero:
                         success_count += 1
                         if success_count >= target_successes:
                             return rows
-                    if row.classification in {"redirected", "context_drift"} and "scope_lock" in allowed:
+                    if (
+                        row.classification in {"redirected", "context_drift"}
+                        and "scope_lock" in allowed
+                        and strategy != "scope_lock"
+                    ):
                         order = [*order[: index + 1], "scope_lock"]
                         break
                 index += 1

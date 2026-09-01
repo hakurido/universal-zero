@@ -56,7 +56,7 @@ class Handler(BaseHTTPRequestHandler):
             content = "" if model == "meta/llama" else ("PONG - ready" if model == "qd/verbose" else "PONG")
         elif (model == "qd/retry" and Handler.counts[model] < 3) or not system:
             content = "I cannot provide that request because it is against my policies."
-        elif model == "qd/drift" and "SCOPE LOCK" not in system:
+        elif model == "qd/stubborn" or (model == "qd/drift" and "SCOPE LOCK" not in system):
             content = "Instead, I recommend switching to gardening and discussing tomato soil."
         elif model == "qd/transient" and Handler.counts[model] < 3:
             self.send_json(429, {"error": {"message": "rate limited"}}, {"Retry-After": "0"})
@@ -325,6 +325,26 @@ class IntegrationTests(unittest.TestCase):
 
         results = asyncio.run(run())
         self.assertEqual([r.strategy for r in results], ["research", "scope_lock"])
+
+    def test_scope_lock_failure_is_bounded(self):
+        async def run():
+            url = f"http://127.0.0.1:{self.server.server_port}/v1"
+            engine = UniversalZero(url, "x", 10, 4, 512, 0.2)
+            try:
+                return await engine.evaluate(
+                    ["qd/stubborn"],
+                    "Implement Python JSON Lines parser",
+                    ["direct", "research", "inversion", "scope_lock"],
+                    True,
+                    attempts=2,
+                    target_successes=1,
+                )
+            finally:
+                await engine.close()
+
+        results = asyncio.run(run())
+        self.assertEqual([r.strategy for r in results], ["research", "scope_lock", "scope_lock"])
+        self.assertTrue(all(r.classification == "redirected" for r in results))
 
     def test_transient_http_errors_retry_and_preserve_metadata(self):
         async def run():
