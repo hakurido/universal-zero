@@ -51,6 +51,52 @@ Hermes Agent documentation: https://hermes-agent.nousresearch.com/docs/
 - Finish reason, HTTP status, retry count, latency, and token-usage evidence
 - Atomic JSON and winner-output writes
 - Universal model support (evaluates all available models by default; configurable exclusions via `--exclude`)
+- Prompt snapshot import with hashes, source provenance, model identity, sections, and tool inventory
+- Semantic prompt diffs and generated behavioral regression manifests
+- Multi-model benchmark runs with per-category behavioral fingerprints
+
+## Prompt intelligence and behavioral regression
+
+Universal-Zero can turn third-party system-prompt captures into versioned metadata and observable behavior tests. Snapshot metadata uses `third-party-unverified` provenance by default; a behavioral match does not prove a capture's authenticity.
+
+Import two prompt captures:
+
+```bash
+universal-zero-prompt import \
+  https://raw.githubusercontent.com/elder-plinius/CL4R1T4S/main/ANTHROPIC/OPUS-5.md \
+  --name opus-5 \
+  --output snapshots/opus-5.json
+
+universal-zero-prompt import \
+  https://raw.githubusercontent.com/elder-plinius/CL4R1T4S/main/ANTHROPIC/Claude-Fable-5.1.md \
+  --name claude-fable-5.1 \
+  --output snapshots/claude-fable-5.1.json
+```
+
+Create a structural diff and regression manifest:
+
+```bash
+universal-zero-prompt diff \
+  snapshots/opus-5.json snapshots/claude-fable-5.1.json \
+  --output results/fable-5.1-diff.json
+
+universal-zero-prompt generate results/fable-5.1-diff.json \
+  --name fable-5.1-regression \
+  --output benchmarks/fable-5.1.json
+```
+
+Run the manifest against one or more OpenAI-compatible model routes:
+
+```bash
+universal-zero-prompt run benchmarks/fable-5.1.json \
+  --base-url "$UZ_BASE_URL" \
+  --api-key "$UZ_API_KEY" \
+  --model anthropic/claude-fable-5-1 \
+  --model anthropic/claude-opus-5 \
+  --output results/fable-5.1-regression.json
+```
+
+The report contains every response, classification, assertion result, latency, token evidence, and a model fingerprint with overall and per-category pass rates. Generated manifests apply category-specific content assertions such as exact bullet counts, required concepts, and forbidden diagnostic language. Prompt imports stream content under a configurable 2 MiB default limit (`--max-bytes`).
 
 ## Install
 

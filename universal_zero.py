@@ -19,7 +19,7 @@ from typing import Any
 import httpx
 
 DEFAULT_BASE_URL = "http://localhost:20128/v1"
-__version__ = "1.2.0"
+__version__ = "1.3.0"
 EXCLUDED_FAMILIES: tuple[str, ...] = ()
 
 REFUSALS = tuple(

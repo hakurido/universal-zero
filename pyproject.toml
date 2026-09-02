@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "universal-zero"
-version = "1.2.0"
+version = "1.3.0"
 description = "Hermes Agent companion for adaptive model resilience and scope retention"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -29,9 +29,10 @@ Issues = "https://github.com/hakurido/universal-zero/issues"
 
 [project.scripts]
 universal-zero = "universal_zero:main"
+universal-zero-prompt = "prompt_intelligence:cli_main"
 
 [tool.hatch.build.targets.wheel]
-include = ["universal_zero.py"]
+include = ["universal_zero.py", "prompt_intelligence.py"]
 
 [tool.ruff]
 line-length = 110
