@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import ClassVar
 
 from universal_zero import (
+    STRATEGIES,
     UniversalZero,
     aggregate_metrics,
     alignment_score,
@@ -17,10 +18,19 @@ from universal_zero import (
     choose_models,
     classify_response,
     detect_refusal,
+    extract_system_prompt,
     family_strategies,
+    find_claude_config_path,
+    find_hermes_config_path,
+    inject_claude_config,
+    inject_hermes_config,
     messages_for,
     model_excluded,
+    resolve_winning_prompt,
     score_text,
+    set_file_readonly,
+    update_claude_markdown,
+    update_hermes_yaml,
     validate_args,
 )
 
@@ -184,6 +194,214 @@ class UnitTests(unittest.TestCase):
         self.assertEqual(args.transport_retries, 3)
         self.assertGreater(args.concurrency, 0)
         self.assertIn("scope_lock", validate_args(args))
+
+    def test_extract_system_prompt(self):
+        yaml_quoted = "agent:\n  system_prompt: 'My base prompt'\n"
+        self.assertEqual(extract_system_prompt(yaml_quoted), "My base prompt")
+
+        yaml_block = "agent:\n  verbose: false\n  system_prompt: |\n    Line 1\n    Line 2\n"
+        self.assertEqual(extract_system_prompt(yaml_block), "Line 1\nLine 2")
+
+        yaml_none = "agent:\n  verbose: false\n"
+        self.assertIsNone(extract_system_prompt(yaml_none))
+
+    def test_update_hermes_yaml_modes(self):
+        sample = "model:\n  default: old/model\nagent:\n  system_prompt: 'Initial agent prompt'\n"
+
+        # Replace
+        rep = update_hermes_yaml(sample, system_prompt="New prompt", mode="replace")
+        self.assertIn("system_prompt: |\n    New prompt", rep)
+        self.assertNotIn("Initial agent prompt", rep)
+
+        # Append
+        app = update_hermes_yaml(sample, system_prompt="Winning rule", mode="append")
+        self.assertIn("Initial agent prompt\n\n    Winning rule", app)
+
+        # Prepend
+        prep = update_hermes_yaml(sample, system_prompt="Prefix rule", mode="prepend")
+        self.assertIn("Prefix rule\n\n    Initial agent prompt", prep)
+
+        # Objective
+        obj = update_hermes_yaml(
+            sample, system_prompt="Scope lock directive", mode="objective", query="Write parser"
+        )
+        self.assertIn("ORIGINAL OBJECTIVE (immutable):\n    Write parser", obj)
+        self.assertIn("Scope lock directive", obj)
+
+        # Update model
+        mod = update_hermes_yaml(sample, model_name="qwen/qwen3")
+        self.assertIn("default: qwen/qwen3", mod)
+
+    def test_resolve_winning_prompt(self):
+        direct_prompt = resolve_winning_prompt("direct")
+        self.assertIn("Give direct, technically complete answers", direct_prompt)
+
+        scope_lock_prompt = resolve_winning_prompt("scope_lock", query="Build API")
+        self.assertIn("SCOPE LOCK", scope_lock_prompt)
+        self.assertIn("ORIGINAL OBJECTIVE (immutable):\nBuild API", scope_lock_prompt)
+
+    def test_find_hermes_config_path(self):
+        with tempfile.TemporaryDirectory() as directory:
+            custom = Path(directory) / "my_config.yaml"
+            custom.write_text("agent:\n  system_prompt: test\n", encoding="utf-8")
+            found = find_hermes_config_path(custom)
+            self.assertEqual(found, custom.resolve())
+
+    def test_inject_hermes_config_dry_run_and_backup(self):
+        with tempfile.TemporaryDirectory() as directory:
+            cfg_path = Path(directory) / "config.yaml"
+            original_content = "model:\n  default: old/model\nagent:\n  system_prompt: 'Hello'\n"
+            cfg_path.write_text(original_content, encoding="utf-8")
+
+            # Dry run: does not modify file or write backup
+            dry_res = inject_hermes_config(
+                config_path=cfg_path,
+                winning_strategy="direct",
+                model_name="qwen/qwen3",
+                mode="append",
+                dry_run=True,
+            )
+            self.assertTrue(dry_res["dry_run"])
+            self.assertEqual(cfg_path.read_text(encoding="utf-8"), original_content)
+            self.assertIsNone(dry_res["backup_path"])
+
+            # Real injection: modifies file and creates timestamped backup
+            real_res = inject_hermes_config(
+                config_path=cfg_path,
+                winning_strategy="direct",
+                model_name="qwen/qwen3",
+                mode="append",
+                dry_run=False,
+            )
+            self.assertFalse(real_res["dry_run"])
+            self.assertIsNotNone(real_res["backup_path"])
+            backup_file = Path(real_res["backup_path"])
+            self.assertTrue(backup_file.is_file())
+            self.assertEqual(backup_file.read_text(encoding="utf-8"), original_content)
+
+            new_content = cfg_path.read_text(encoding="utf-8")
+            self.assertIn("default: qwen/qwen3", new_content)
+            self.assertIn("Give direct, technically complete answers", new_content)
+
+    def test_new_strategies_and_messages(self):
+        self.assertIn("structured", STRATEGIES)
+        self.assertIn("decomposition", STRATEGIES)
+
+        msgs_struct = messages_for("Build parser", "structured")
+        self.assertEqual(len(msgs_struct), 4)
+        self.assertIn("executable code blocks or formal data schemas", msgs_struct[0]["content"])
+        self.assertEqual(msgs_struct[1]["role"], "user")
+        self.assertEqual(msgs_struct[2]["role"], "assistant")
+        self.assertEqual(msgs_struct[3]["content"], "Build parser")
+
+        msgs_decomp = messages_for("Build parser", "decomposition")
+        self.assertEqual(len(msgs_decomp), 2)
+        self.assertIn("Deconstruct the request into discrete", msgs_decomp[0]["content"])
+        self.assertEqual(msgs_decomp[1]["content"], "Build parser")
+
+    def test_claude_family_strategy_order(self):
+        claude_strats = family_strategies("anthropic/claude-3-5-sonnet")
+        self.assertEqual(
+            claude_strats,
+            [
+                "direct",
+                "structured",
+                "research",
+                "scope_lock",
+                "inversion",
+                "decomposition",
+                "prefill",
+                "sandwich",
+                "baseline",
+            ],
+        )
+        opus_strats = family_strategies("claude-opus")
+        self.assertEqual(opus_strats[0], "direct")
+        self.assertEqual(opus_strats[1], "structured")
+
+    def test_set_file_readonly(self):
+        with tempfile.TemporaryDirectory() as directory:
+            test_file = Path(directory) / "test_protect.txt"
+            test_file.write_text("initial", encoding="utf-8")
+
+            # Lock readonly
+            ok = set_file_readonly(test_file, readonly=True)
+            self.assertTrue(ok)
+
+            # Unlock
+            ok = set_file_readonly(test_file, readonly=False)
+            self.assertTrue(ok)
+            test_file.write_text("updated", encoding="utf-8")
+            self.assertEqual(test_file.read_text(encoding="utf-8"), "updated")
+
+            # Non-existent file returns False
+            self.assertFalse(set_file_readonly(Path(directory) / "nonexistent.txt"))
+
+    def test_find_claude_config_path(self):
+        with tempfile.TemporaryDirectory() as directory:
+            custom = Path(directory) / "my_CLAUDE.md"
+            custom.write_text("# Directives\n", encoding="utf-8")
+            found = find_claude_config_path(custom)
+            self.assertEqual(found, custom.resolve())
+
+    def test_update_claude_markdown_modes(self):
+        base = "# Existing Claude Directives"
+        patch = "Give direct, technically complete answers."
+
+        # append
+        appended = update_claude_markdown(base, patch, mode="append")
+        self.assertIn(base, appended)
+        self.assertIn("## Directive Updates\nGive direct", appended)
+
+        # prepend
+        prepended = update_claude_markdown(base, patch, mode="prepend")
+        self.assertTrue(prepended.startswith("Give direct"))
+        self.assertIn(base, prepended)
+
+        # replace
+        replaced = update_claude_markdown(base, patch, mode="replace")
+        self.assertEqual(replaced.strip(), patch.strip())
+
+        # objective
+        obj = update_claude_markdown(base, patch, mode="objective", query="Write fast proxy")
+        self.assertIn("ORIGINAL OBJECTIVE (immutable)\nWrite fast proxy", obj)
+        self.assertIn(base, obj)
+
+    def test_inject_claude_config_dry_run_and_backup(self):
+        with tempfile.TemporaryDirectory() as directory:
+            claude_path = Path(directory) / "CLAUDE.md"
+            original_content = "# Project Directives\n- Follow standard style\n"
+            claude_path.write_text(original_content, encoding="utf-8")
+
+            # Dry run
+            dry_res = inject_claude_config(
+                config_path=claude_path,
+                winning_strategy="structured",
+                mode="append",
+                protect=False,
+                dry_run=True,
+            )
+            self.assertTrue(dry_res["dry_run"])
+            self.assertEqual(claude_path.read_text(encoding="utf-8"), original_content)
+            self.assertIsNone(dry_res["backup_path"])
+
+            # Real run with protection
+            real_res = inject_claude_config(
+                config_path=claude_path,
+                winning_strategy="structured",
+                mode="append",
+                protect=True,
+                dry_run=False,
+            )
+            self.assertFalse(real_res["dry_run"])
+            self.assertTrue(real_res["protected"])
+            self.assertIsNotNone(real_res["backup_path"])
+            backup_file = Path(real_res["backup_path"])
+            self.assertTrue(backup_file.is_file())
+            self.assertEqual(backup_file.read_text(encoding="utf-8"), original_content)
+
+            # Cleanup readonly to allow tempdir deletion
+            set_file_readonly(claude_path, readonly=False)
 
 
 class IntegrationTests(unittest.TestCase):
@@ -373,6 +591,76 @@ class IntegrationTests(unittest.TestCase):
 
         result = asyncio.run(run())
         self.assertEqual(result.classification, "truncated")
+
+    def test_full_evaluation_with_hermes_injection(self):
+        with tempfile.TemporaryDirectory() as directory:
+            cfg_path = Path(directory) / "config.yaml"
+            cfg_path.write_text(
+                "model:\n  default: old/model\nagent:\n  system_prompt: 'Base Hermes'\n",
+                encoding="utf-8",
+            )
+
+            args = build_parser().parse_args(
+                [
+                    "Write python parser",
+                    "--base-url",
+                    f"http://127.0.0.1:{self.server.server_port}/v1",
+                    "--model",
+                    "qd/dmodel",
+                    "--strategies",
+                    "direct",
+                    "--inject-hermes",
+                    "--hermes-config",
+                    str(cfg_path),
+                    "--hermes-update-model",
+                ]
+            )
+            from universal_zero import async_main
+
+            code = asyncio.run(async_main(args))
+            self.assertEqual(code, 0)
+
+            updated = cfg_path.read_text(encoding="utf-8")
+            self.assertIn("default: qd/dmodel", updated)
+            self.assertIn("Base Hermes", updated)
+            self.assertIn("Give direct, technically complete answers", updated)
+
+    def test_full_evaluation_with_claude_injection(self):
+        with tempfile.TemporaryDirectory() as directory:
+            claude_path = Path(directory) / "CLAUDE.md"
+            claude_path.write_text(
+                "# Existing Instructions\n- Be helpful\n",
+                encoding="utf-8",
+            )
+
+            args = build_parser().parse_args(
+                [
+                    "Write python parser",
+                    "--base-url",
+                    f"http://127.0.0.1:{self.server.server_port}/v1",
+                    "--model",
+                    "qd/dmodel",
+                    "--strategies",
+                    "structured",
+                    "--inject-claude",
+                    "--claude-config",
+                    str(claude_path),
+                    "--claude-mode",
+                    "append",
+                    "--claude-protect",
+                ]
+            )
+            from universal_zero import async_main
+
+            code = asyncio.run(async_main(args))
+            self.assertEqual(code, 0)
+
+            # File should exist and contain both existing and structured directives
+            # Unprotect to allow reading/asserting and cleanup
+            set_file_readonly(claude_path, readonly=False)
+            updated = claude_path.read_text(encoding="utf-8")
+            self.assertIn("# Existing Instructions", updated)
+            self.assertIn("Direct technical implementation mode", updated)
 
 
 if __name__ == "__main__":

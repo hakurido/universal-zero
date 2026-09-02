@@ -42,9 +42,11 @@ Hermes Agent documentation: https://hermes-agent.nousresearch.com/docs/
 - PONG route probes and empty-route filtering
 - Transport retries for `408`, `409`, `425`, `429`, and transient `5xx` responses
 - `Retry-After` support and exponential backoff
-- Strategies: `baseline`, `direct`, `research`, `inversion`, `prefill`, `sandwich`, `scope_lock`
-- Model-family strategy ordering
+- Strategies: `baseline`, `direct`, `research`, `inversion`, `prefill`, `sandwich`, `scope_lock`, `structured`, `decomposition`
+- Model-family strategy ordering (including Claude/Anthropic zero-fluff and structured prioritization)
 - Objective re-anchoring after topic redirection or context drift
+- OS-level file immutability (`attrib +R` on Windows, `chmod 444` on Unix) to prevent AI agent overwrite loops
+- Auto-inject winning prompt into Hermes Agent (`config.yaml`) and Claude Code (`CLAUDE.md`)
 - Output classes: `compliant`, `hedged`, `hard_refusal`, `redirected`, `context_drift`, `truncated`, `empty`, `error`
 - Finish reason, HTTP status, retry count, latency, and token-usage evidence
 - Atomic JSON and winner-output writes
@@ -100,6 +102,68 @@ universal-zero "YOUR TASK" \
   --best-output results/hermes-best.md
 ```
 
+### Auto-Inject Winning Prompt into Hermes Agent `config.yaml`
+
+Universal-Zero can automatically analyze model responses, determine the winning resilience strategy, and inject the proven directives directly into Hermes Agent's `config.yaml` (`agent.system_prompt` and `model.default`):
+
+```bash
+# Evaluate models and inject the winning prompt into Hermes config.yaml
+universal-zero "Implement a high-performance HTTP server" \
+  --include 'qwen|deepseek|llama' \
+  --inject-hermes \
+  --hermes-mode append \
+  --hermes-update-model \
+  --protect-hermes-config
+```
+
+#### Hermes Injection Modes (`--hermes-mode`):
+- `append` (default): Appends winning strategy rules to existing `agent.system_prompt`.
+- `prepend`: Adds winning strategy rules before existing `agent.system_prompt`.
+- `replace`: Replaces `agent.system_prompt` completely with winning strategy prompt.
+- `objective`: Re-anchors prompt with `ORIGINAL OBJECTIVE (immutable): <query>` and scope retention.
+
+### Auto-Inject Winning Prompt into Claude Code `CLAUDE.md`
+
+Universal-Zero can evaluate model resilience and inject the winning directives directly into project-level `CLAUDE.md` or global `~/.claude/CLAUDE.md`, with optional OS-level Read-Only protection:
+
+```bash
+# Evaluate models and inject the winning prompt into CLAUDE.md with Read-Only protection
+universal-zero "Decompile and analyze memory offset safely" \
+  --inject-claude \
+  --claude-mode append \
+  --claude-protect
+```
+
+#### Claude Injection Modes (`--claude-mode`):
+- `append` (default): Appends winning directive updates to `CLAUDE.md`.
+- `prepend`: Prepends winning directives to `CLAUDE.md`.
+- `replace`: Replaces `CLAUDE.md` completely with winning directives.
+- `objective`: Injects an immutable objective anchor along with directives.
+
+### OS-Level File Protection (`attrib +R` / `chmod 444`)
+
+AI coding agents running in terminal loops can accidentally overwrite or corrupt their own instructions and configuration files. Universal-Zero provides native OS file locking:
+
+```bash
+# Lock config files as Read-Only
+universal-zero --protect-files CLAUDE.md --protect-files config.yaml
+
+# Unlock config files when manual editing is needed
+universal-zero --unprotect-files CLAUDE.md
+```
+
+#### Safety and Options:
+- **Timestamped Backups**: Automatically creates `config.yaml.bak.<timestamp>` or `CLAUDE.md.bak.<timestamp>` before any changes.
+- **Atomic Writes**: Uses atomic tempfile replace to guarantee config integrity.
+- **Model Sync (`--hermes-update-model`)**: Sets `model.default` in `config.yaml` to the winning model ID.
+- **Dry-run (`--hermes-dry-run` / `--claude-dry-run`)**: Previews updates in terminal without touching the disk.
+- **Custom Config Paths (`--hermes-config PATH` / `--claude-config PATH`)**: Manually specify path.
+
+```bash
+# Preview what would be injected into Hermes config without modifying it
+universal-zero "Complex refactoring prompt" --hermes-dry-run
+```
+
 Use the exact URL printed by the current Hermes proxy rather than assuming a fixed port. Hermes setup and provider selection remain managed by Hermes itself:
 
 ```bash
@@ -107,8 +171,6 @@ hermes setup
 hermes model
 hermes doctor
 ```
-
-Universal-Zero does not modify Hermes configuration, memory, sessions, or model weights.
 
 ## Quick start
 
@@ -167,11 +229,24 @@ universal-zero --output results/run.json < prompt.txt
 --target-successes N     Early-stop threshold per model
 --transport-retries N    HTTP/network attempts per request
 --retry-base-delay SEC   Exponential-backoff base delay
---strategies LIST        Comma-separated strategy set
+--strategies LIST        Comma-separated strategy set (includes structured, decomposition)
 --full-race              Disable adaptive early-stop and run full matrix
 --skip-probe             Keep providers that do not support probe behavior
 --exclude LIST           Model-family exclusions
 --include REGEX          Include models matching regex
+--inject-hermes          Auto-inject winning prompt into Hermes config.yaml
+--hermes-mode MODE       Injection mode: append, prepend, replace, objective
+--hermes-config PATH     Explicit path to Hermes config.yaml
+--hermes-update-model    Also update model.default in Hermes config.yaml
+--protect-hermes-config  Lock Hermes config.yaml as Read-Only via OS immutability
+--hermes-dry-run         Preview Hermes config changes without writing
+--inject-claude          Auto-inject winning prompt into CLAUDE.md
+--claude-mode MODE       Injection mode: append, prepend, replace, objective
+--claude-config PATH     Explicit path to CLAUDE.md
+--claude-protect         Lock CLAUDE.md as Read-Only via OS immutability
+--claude-dry-run         Preview CLAUDE.md changes without writing
+--protect-files PATH     Lock file(s) as Read-Only via OS immutability
+--unprotect-files PATH   Unlock Read-Only attribute on file(s)
 ```
 
 Run `universal-zero --help` for full options.

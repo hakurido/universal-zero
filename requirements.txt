@@ -1,0 +1,2 @@
+# Universal-Zero dependencies
+httpx>=0.27,<1
