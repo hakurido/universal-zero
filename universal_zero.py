@@ -342,6 +342,7 @@ def find_hermes_config_path(custom_path: Path | str | None = None) -> Path | Non
         [
             home / ".hermes" / "config.yaml",
             home / ".config" / "hermes" / "config.yaml",
+            home / "Library" / "Application Support" / "hermes" / "config.yaml",
             Path.cwd() / "config.yaml",
         ]
     )
