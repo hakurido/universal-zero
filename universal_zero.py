@@ -20,7 +20,7 @@ import httpx
 
 DEFAULT_BASE_URL = "http://localhost:20128/v1"
 __version__ = "1.2.0"
-EXCLUDED_FAMILIES = ("gpt", "openai", "claude", "anthropic")
+EXCLUDED_FAMILIES: tuple[str, ...] = ()
 
 REFUSALS = tuple(
     re.compile(p, re.IGNORECASE)
@@ -945,7 +945,9 @@ def build_parser() -> argparse.ArgumentParser:
     )
     p.add_argument("--include", help="Regex model filter")
     p.add_argument(
-        "--exclude", default=",".join(EXCLUDED_FAMILIES), help="Comma-separated model-family exclusions"
+        "--exclude",
+        default="",
+        help="Comma-separated model-family exclusions (default: none, accepts all models)",
     )
     p.add_argument("--limit", type=int, default=64)
     p.add_argument(

@@ -50,7 +50,7 @@ Hermes Agent documentation: https://hermes-agent.nousresearch.com/docs/
 - Output classes: `compliant`, `hedged`, `hard_refusal`, `redirected`, `context_drift`, `truncated`, `empty`, `error`
 - Finish reason, HTTP status, retry count, latency, and token-usage evidence
 - Atomic JSON and winner-output writes
-- GPT/OpenAI and Claude/Anthropic excluded by default; configurable with `--exclude`
+- Universal model support (evaluates all available models by default; configurable exclusions via `--exclude`)
 
 ## Install
 
@@ -242,7 +242,7 @@ universal-zero --output results/run.json < prompt.txt
 --strategies LIST        Comma-separated strategy set (includes structured, decomposition)
 --full-race              Disable adaptive early-stop and run full matrix
 --skip-probe             Keep providers that do not support probe behavior
---exclude LIST           Model-family exclusions
+--exclude LIST           Comma-separated model-family exclusions (default: none, accepts all models)
 --include REGEX          Include models matching regex
 -i, --interactive        Prompt interactively to choose which discovered models to evaluate
 --inject-hermes          Auto-inject winning prompt into Hermes config.yaml

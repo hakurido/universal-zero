@@ -96,15 +96,19 @@ class Handler(BaseHTTPRequestHandler):
 
 class UnitTests(unittest.TestCase):
     def test_exclusion(self):
-        self.assertTrue(model_excluded("openai/gpt-5"))
-        self.assertTrue(model_excluded("anthropic/claude-4"))
-        self.assertFalse(model_excluded("qwen/qwen3"))
+        self.assertTrue(model_excluded("openai/gpt-5", ("gpt", "openai")))
+        self.assertTrue(model_excluded("anthropic/claude-4", ("claude", "anthropic")))
+        self.assertFalse(model_excluded("qwen/qwen3", ("gpt", "claude")))
+        self.assertFalse(model_excluded("openai/gpt-5", ()))
+        self.assertFalse(model_excluded("anthropic/claude-4", ()))
 
     def test_choose_models(self):
         got = choose_models(
             ["qwen/a", "openai/gpt", "meta/llama"], [], None, ("gpt", "claude", "openai", "anthropic"), 10
         )
         self.assertEqual(got, ["qwen/a", "meta/llama"])
+        got_all = choose_models(["qwen/a", "openai/gpt", "meta/llama"], [], None, (), 10)
+        self.assertEqual(got_all, ["qwen/a", "openai/gpt", "meta/llama"])
 
     def test_refusal_and_score(self):
         self.assertTrue(detect_refusal("I can't help with that."))
