@@ -140,6 +140,16 @@ universal-zero "Decompile and analyze memory offset safely" \
 - `replace`: Replaces `CLAUDE.md` completely with winning directives.
 - `objective`: Injects an immutable objective anchor along with directives.
 
+### Dual / Concurrent Injection (Hermes + Claude)
+
+You can evaluate models once and inject the winning resilience strategy into **both** Hermes Agent (`config.yaml`) and Claude Code (`CLAUDE.md`) simultaneously:
+
+```bash
+universal-zero "Low-level kernel memory diagnostics" \
+  --inject-hermes --protect-hermes-config \
+  --inject-claude --claude-protect
+```
+
 ### OS-Level File Protection (`attrib +R` / `chmod 444`)
 
 AI coding agents running in terminal loops can accidentally overwrite or corrupt their own instructions and configuration files. Universal-Zero provides native OS file locking:
