@@ -24,6 +24,7 @@ from universal_zero import (
     find_hermes_config_path,
     inject_claude_config,
     inject_hermes_config,
+    interactive_select_models,
     messages_for,
     model_excluded,
     resolve_winning_prompt,
@@ -402,6 +403,41 @@ class UnitTests(unittest.TestCase):
 
             # Cleanup readonly to allow tempdir deletion
             set_file_readonly(claude_path, readonly=False)
+
+    def test_interactive_select_models(self):
+        models = ["model-a", "model-b", "model-c"]
+        # Empty input -> returns all
+        self.assertEqual(
+            interactive_select_models(models, input_func=lambda _: "", print_func=lambda _: None), models
+        )
+        # "all" -> returns all
+        self.assertEqual(
+            interactive_select_models(models, input_func=lambda _: "all", print_func=lambda _: None), models
+        )
+        # Select single number "2" -> ["model-b"]
+        self.assertEqual(
+            interactive_select_models(models, input_func=lambda _: "2", print_func=lambda _: None),
+            ["model-b"],
+        )
+        # Select multiple numbers "1, 3" -> ["model-a", "model-c"]
+        self.assertEqual(
+            interactive_select_models(models, input_func=lambda _: "1, 3", print_func=lambda _: None),
+            ["model-a", "model-c"],
+        )
+        # Select by name
+        self.assertEqual(
+            interactive_select_models(models, input_func=lambda _: "model-c", print_func=lambda _: None),
+            ["model-c"],
+        )
+        # Invalid selection falls back to all
+        self.assertEqual(
+            interactive_select_models(models, input_func=lambda _: "99", print_func=lambda _: None),
+            models,
+        )
+        # Single model list returns immediately without prompt
+        self.assertEqual(interactive_select_models(["single-model"]), ["single-model"])
+        # Empty models list returns []
+        self.assertEqual(interactive_select_models([]), [])
 
 
 class IntegrationTests(unittest.TestCase):

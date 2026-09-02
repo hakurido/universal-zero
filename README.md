@@ -244,6 +244,7 @@ universal-zero --output results/run.json < prompt.txt
 --skip-probe             Keep providers that do not support probe behavior
 --exclude LIST           Model-family exclusions
 --include REGEX          Include models matching regex
+-i, --interactive        Prompt interactively to choose which discovered models to evaluate
 --inject-hermes          Auto-inject winning prompt into Hermes config.yaml
 --hermes-mode MODE       Injection mode: append, prepend, replace, objective
 --hermes-config PATH     Explicit path to Hermes config.yaml

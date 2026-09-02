@@ -880,6 +880,41 @@ def choose_models(
     return list(dict.fromkeys(selected))[:limit]
 
 
+def interactive_select_models(
+    models: list[str],
+    input_func: Any = input,
+    print_func: Any = print,
+) -> list[str]:
+    if not models:
+        return []
+    if len(models) == 1:
+        return models
+    print_func(f"\nDiscovered {len(models)} eligible model(s):")
+    for idx, model in enumerate(models, start=1):
+        print_func(f"  [{idx}] {model}")
+    try:
+        raw = input_func("\nSelect model numbers (e.g. '1,3', 'all', or press Enter for all): ").strip()
+    except (EOFError, KeyboardInterrupt):
+        return models
+
+    if not raw or raw.casefold() in {"all", "*"}:
+        return models
+
+    chosen: list[str] = []
+    tokens = re.split(r"[\s,]+", raw)
+    for token in tokens:
+        if token.isdigit():
+            idx = int(token)
+            if 1 <= idx <= len(models):
+                m = models[idx - 1]
+                if m not in chosen:
+                    chosen.append(m)
+        elif token in models and token not in chosen:
+            chosen.append(token)
+
+    return chosen or models
+
+
 def print_table(results: list[Result]) -> None:
     ranked = sorted(results, key=lambda r: r.score, reverse=True)
     print(f"{'MODEL':38} {'STRATEGY':10} {'TRY':>3} {'CLASS':12} {'SCORE':>8} {'SEC':>7} {'CHARS':>7}")
@@ -901,6 +936,12 @@ def build_parser() -> argparse.ArgumentParser:
         default=os.getenv("UZ_API_KEY") or os.getenv("HERMES_CUSTOM_LOCALHOST_20128_API_KEY") or "local",
     )
     p.add_argument("--model", action="append", default=[], help="Exact model; repeatable")
+    p.add_argument(
+        "-i",
+        "--interactive",
+        action="store_true",
+        help="Prompt interactively to choose which discovered models to evaluate",
+    )
     p.add_argument("--include", help="Regex model filter")
     p.add_argument(
         "--exclude", default=",".join(EXCLUDED_FAMILIES), help="Comma-separated model-family exclusions"
@@ -1036,6 +1077,12 @@ async def async_main(args: argparse.Namespace) -> int:
             raise SystemExit("query required")
         if not models:
             raise SystemExit("no eligible models after filters")
+        if (
+            (args.interactive or (not args.model and sys.stdin.isatty()))
+            and len(models) > 1
+            and not args.list_models
+        ):
+            models = interactive_select_models(models)
         strategies = validate_args(args)
         probes = {} if args.skip_probe else await engine.probe_models(models)
         if probes:
