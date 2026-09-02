@@ -661,7 +661,6 @@ def inject_claude_config(
     }
 
 
-
 class UniversalZero:
     def __init__(
         self,
