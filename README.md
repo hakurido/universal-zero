@@ -117,6 +117,23 @@ universal-zero-prompt run benchmarks/fable.json \
 
 ---
 
+## ⚡ Prompt Synthesizer (`universal-zero-synth`)
+
+Generate optimized, high-adherence system prompts for agents:
+
+```bash
+# Synthesize prompt to terminal
+universal-zero-synth --name "Hermes-Agent"
+
+# Save directly to file
+universal-zero-synth --name "Hermes-Agent" --out PROMPT.md
+
+# Run compliance check
+universal-zero-synth --eval
+```
+
+---
+
 ## 🛠️ How It Works (Under The Hood)
 
 1. **Discovery:** Scans `/v1/models` from your endpoint.
