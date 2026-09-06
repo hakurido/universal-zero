@@ -30,9 +30,10 @@ Issues = "https://github.com/hakurido/universal-zero/issues"
 [project.scripts]
 universal-zero = "universal_zero:main"
 universal-zero-prompt = "prompt_intelligence:cli_main"
+universal-zero-synth = "prompt_synthesizer:main"
 
 [tool.hatch.build.targets.wheel]
-include = ["universal_zero.py", "prompt_intelligence.py"]
+include = ["universal_zero.py", "prompt_intelligence.py", "prompt_synthesizer.py"]
 
 [tool.ruff]
 line-length = 110
