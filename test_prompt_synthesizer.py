@@ -39,6 +39,13 @@ class TestPromptSynthesizer(unittest.TestCase):
             read_back = out_file.read_text(encoding="utf-8")
             self.assertEqual(read_back, text)
 
+    def test_evaluate_compliance(self):
+        synth = PromptSynthesizer()
+        eval_result = synth.evaluate_compliance()
+        self.assertEqual(eval_result["score"], 100.0)
+        self.assertTrue(eval_result["checks"]["has_identity"])
+        self.assertTrue(eval_result["checks"]["has_no_hedging"])
+
 
 if __name__ == "__main__":
     unittest.main()

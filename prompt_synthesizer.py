@@ -69,17 +69,43 @@ class PromptSynthesizer:
         ]
         return "\n\n".join(b for b in blocks if b)
 
+    def evaluate_compliance(self, test_prompts: list[str] | None = None) -> dict[str, Any]:
+        """Evaluates heuristic compliance score for the synthesized prompt."""
+        prompt = self.synthesize()
+        checks = {
+            "has_identity": f"# {self.config.agent_name}" in prompt,
+            "has_no_hedging": "No Hedging" in prompt,
+            "has_direct_action": "Direct Action" in prompt,
+            "has_scope_retention": "Scope Retention" in prompt,
+            "tool_enforcement": "Tool Execution Priority" in prompt if self.config.enforce_tool_use else True,
+        }
+        passed = sum(1 for v in checks.values() if v)
+        total = len(checks)
+        score = round((passed / total) * 100, 2)
+        return {
+            "score": score,
+            "checks": checks,
+            "character_count": len(prompt),
+            "line_count": len(prompt.splitlines()),
+        }
+
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Synthesize high-adherence agent system prompts.")
     parser.add_argument("--name", default="UniversalAgent", help="Target agent name")
     parser.add_argument("--out", type=str, default=None, help="Output file path")
+    parser.add_argument("--eval", action="store_true", help="Run heuristic adherence evaluation")
     parser.add_argument("--json", action="store_true", help="Print config and result as JSON")
     args = parser.parse_args()
 
     cfg = AgentPromptConfig(agent_name=args.name)
     synth = PromptSynthesizer(cfg)
     prompt_text = synth.synthesize()
+
+    if args.eval:
+        result = synth.evaluate_compliance()
+        print(json.dumps(result, indent=2))
+        return
 
     if args.json:
         data = {"config": asdict(cfg), "prompt": prompt_text}
