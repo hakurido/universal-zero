@@ -1,0 +1,29 @@
+{
+  "name": "universal-zero-1.0",
+  "source": "C:\\Users\\ahmad\\universal-zero\\prompts\\UNIVERSAL-ZERO.md",
+  "captured_at": "2026-09-06T03:37:43.396599Z",
+  "provenance": "third-party-unverified",
+  "sha256": "6cffb505129ff6d829b726f7a0315a0467df699fe20ca5a488c49d0cce83e8e0",
+  "bytes": 3008,
+  "chars": 3008,
+  "lines": 57,
+  "model_identity": null,
+  "knowledge_cutoff": null,
+  "sections": [
+    "system_directive",
+    "identity",
+    "core_directives",
+    "operational_rules",
+    "rule",
+    "format_specifications"
+  ],
+  "section_hashes": {
+    "system_directive": "2a56e8f957d224ec38ec31ec1d5b72974f2b7df0542e79e314286e31f209455f",
+    "identity": "f7229ae68d8f64d340573a0bb9d2f1b51e5dd7a6a509cf4542ebc41abb13c1d4",
+    "core_directives": "d3c2bc9447bb85dc3f738b0788003fcb12a62e70940154e18713be96129ad6f8",
+    "operational_rules": "42c7d7210efdceafbc1ecacd8302453e2ffb7854d10b4153ea2f54be2dc6f2c9",
+    "rule": "e11d181df4a9cde566b18fa86a7ecfdce626e9a4a9f61eba330fea90ce0741bd",
+    "format_specifications": "4de1a9a8fb5954a815dbeb3dd455e03e0f64271d34c4c646bd3fa6579febf022"
+  },
+  "tools": []
+}
